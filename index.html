@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
+        <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>Fiberlight Abandoned RDOF Census Blocks (Virginia)</title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
+        <script src="data/BEADEligibleBSLPercent_3.js"></script>
+        <script src="data/BEADEligibleBSLCount_4.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        })
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var title = new L.Control({'position':'topright'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>Fiberlight Abandoned RDOF Census Blocks (Virginia)</h2>';
+        };
+        title.addTo(map);
+        var abstract = new L.Control({'position':'bottomleft'});
+        abstract.onAdd = function (map) {
+            this._div = L.DomUtil.create('div',
+            'leaflet-control abstract');
+            this._div.id = 'abstract'
+                this._div.setAttribute("onmouseenter", "abstract.show()");
+                this._div.setAttribute("onmouseleave", "abstract.hide()");
+                this.hide();
+                return this._div;
+            };
+            abstract.hide = function () {
+                this._div.classList.remove("abstractUncollapsed");
+                this._div.classList.add("abstract");
+                this._div.innerHTML = 'i'
+            }
+            abstract.show = function () {
+                this._div.classList.remove("abstract");
+                this._div.classList.add("abstractUncollapsed");
+                this._div.innerHTML = 'FiberLight Abandoned Census Blocks in Culpeper, Fauquier, Madison, and Orange Counties Virginia. Census blocks were initially reported with 2010 Census Block IDs. These have been converted to 2020 IDs per the FCC Map standard. Supplemental FCC data uses Version 4 of the fabric, BDC 6/25/2024.<br /><br />Created by Mighty River. Authored by Lukas Kucinski, 6/29/2024.<br /><br />';
+        };
+        abstract.addTo(map);
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+        map.createPane('pane_ESRILightGray_0');
+        map.getPane('pane_ESRILightGray_0').style.zIndex = 400;
+        var layer_ESRILightGray_0 = L.tileLayer('http://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            pane: 'pane_ESRILightGray_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_ESRILightGray_0;
+        map.addLayer(layer_ESRILightGray_0);
+        map.createPane('pane_GoogleSatellite_1');
+        map.getPane('pane_GoogleSatellite_1').style.zIndex = 401;
+        var layer_GoogleSatellite_1 = L.tileLayer('http://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+            pane: 'pane_GoogleSatellite_1',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 18
+        });
+        layer_GoogleSatellite_1;
+        map.createPane('pane_GoogleStreets_2');
+        map.getPane('pane_GoogleStreets_2').style.zIndex = 402;
+        var layer_GoogleStreets_2 = L.tileLayer('https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}', {
+            pane: 'pane_GoogleStreets_2',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 18
+        });
+        layer_GoogleStreets_2;
+        function pop_BEADEligibleBSLPercent_3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Census Block ID</th>\
+                        <td>' + (feature.properties['GEOID20'] !== null ? autolinker.link(feature.properties['GEOID20'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">BEAD Eligible</th>\
+                        <td>' + (feature.properties['bead_elig'] !== null ? autolinker.link(feature.properties['bead_elig'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Unserved BSLs</th>\
+                        <td>' + (feature.properties['unserved'] !== null ? autolinker.link(feature.properties['unserved'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Underserved BSLs</th>\
+                        <td>' + (feature.properties['underserved'] !== null ? autolinker.link(feature.properties['underserved'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Served BSLs</th>\
+                        <td>' + (feature.properties['served'] !== null ? autolinker.link(feature.properties['served'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Percent BEAD Eligible</th>\
+                        <td>' + (feature.properties['bead_elig%'] !== null ? autolinker.link(feature.properties['bead_elig%'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Total BSLs</th>\
+                        <td>' + (feature.properties['total_bsls'] !== null ? autolinker.link(feature.properties['total_bsls'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+        function style_BEADEligibleBSLPercent_3_0(feature) {
+            var context = {
+                feature: feature,
+                variables: {}
+            };
+            // Start of if blocks and style check logic
+            if (exp_BEADEligibleBSLPercent_3rule0_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLPercent_3',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,245,235,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLPercent_3rule1_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLPercent_3',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(253,210,165,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLPercent_3rule2_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLPercent_3',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(253,146,67,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLPercent_3rule3_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLPercent_3',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(223,80,5,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLPercent_3rule4_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLPercent_3',
+                opacity: 1,
+                color: 'rgba(196,196,196,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(127,39,4,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLPercent_3rule5_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLPercent_3',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(122,122,122,1.0)',
+                interactive: true,
+            };
+                }
+            else {
+                return {fill: false, stroke: false};
+            }
+        }
+        map.createPane('pane_BEADEligibleBSLPercent_3');
+        map.getPane('pane_BEADEligibleBSLPercent_3').style.zIndex = 403;
+        map.getPane('pane_BEADEligibleBSLPercent_3').style['mix-blend-mode'] = 'normal';
+        var layer_BEADEligibleBSLPercent_3 = new L.geoJson(json_BEADEligibleBSLPercent_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_BEADEligibleBSLPercent_3',
+            layerName: 'layer_BEADEligibleBSLPercent_3',
+            pane: 'pane_BEADEligibleBSLPercent_3',
+            onEachFeature: pop_BEADEligibleBSLPercent_3,
+            style: style_BEADEligibleBSLPercent_3_0,
+        });
+        bounds_group.addLayer(layer_BEADEligibleBSLPercent_3);
+        function pop_BEADEligibleBSLCount_4(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Census Block ID</th>\
+                        <td>' + (feature.properties['GEOID20'] !== null ? autolinker.link(feature.properties['GEOID20'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">BEAD Eligible</th>\
+                        <td>' + (feature.properties['bead_elig'] !== null ? autolinker.link(feature.properties['bead_elig'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Unserved BSLs</th>\
+                        <td>' + (feature.properties['unserved'] !== null ? autolinker.link(feature.properties['unserved'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Underserved BSLs</th>\
+                        <td>' + (feature.properties['underserved'] !== null ? autolinker.link(feature.properties['underserved'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Served BSLs</th>\
+                        <td>' + (feature.properties['served'] !== null ? autolinker.link(feature.properties['served'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Percent BEAD Eligible</th>\
+                        <td>' + (feature.properties['bead_elig%'] !== null ? autolinker.link(feature.properties['bead_elig%'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Total BSLs</th>\
+                        <td>' + (feature.properties['total_bsls'] !== null ? autolinker.link(feature.properties['total_bsls'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+        function style_BEADEligibleBSLCount_4_0(feature) {
+            var context = {
+                feature: feature,
+                variables: {}
+            };
+            // Start of if blocks and style check logic
+            if (exp_BEADEligibleBSLCount_4rule0_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLCount_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(247,252,245,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLCount_4rule1_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLCount_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(201,234,194,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLCount_4rule2_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLCount_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(123,199,124,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLCount_4rule3_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLCount_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(42,146,75,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLCount_4rule4_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLCount_4',
+                opacity: 1,
+                color: 'rgba(196,196,196,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(0,68,27,1.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_BEADEligibleBSLCount_4rule5_eval_expression(context)) {
+                  return {
+                pane: 'pane_BEADEligibleBSLCount_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(122,122,122,1.0)',
+                interactive: true,
+            };
+                }
+            else {
+                return {fill: false, stroke: false};
+            }
+        }
+        map.createPane('pane_BEADEligibleBSLCount_4');
+        map.getPane('pane_BEADEligibleBSLCount_4').style.zIndex = 404;
+        map.getPane('pane_BEADEligibleBSLCount_4').style['mix-blend-mode'] = 'normal';
+        var layer_BEADEligibleBSLCount_4 = new L.geoJson(json_BEADEligibleBSLCount_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_BEADEligibleBSLCount_4',
+            layerName: 'layer_BEADEligibleBSLCount_4',
+            pane: 'pane_BEADEligibleBSLCount_4',
+            onEachFeature: pop_BEADEligibleBSLCount_4,
+            style: style_BEADEligibleBSLCount_4_0,
+        });
+        bounds_group.addLayer(layer_BEADEligibleBSLCount_4);
+        map.addLayer(layer_BEADEligibleBSLCount_4);
+        var osmGeocoder = new L.Control.Geocoder({
+            collapsed: true,
+            position: 'topleft',
+            text: 'Search',
+            title: 'Testing'
+        }).addTo(map);
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .className += ' fa fa-search';
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .title += 'Search for a place';
+        var baseMaps = {};
+        var overlaysTree = [
+            {label: 'BEAD Eligible BSL Count<br /><table><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLCount_4_AllBSLsServed0.png" /></td><td>All BSLs Served</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLCount_4_15BEADEligible1.png" /></td><td>1-5 BEAD Eligible</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLCount_4_5102.png" /></td><td>5-10</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLCount_4_10203.png" /></td><td>10-20</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLCount_4_204.png" /></td><td>20+</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLCount_4_NoBSLs5.png" /></td><td>No BSLs</td></tr></table>', layer: layer_BEADEligibleBSLCount_4},
+            {label: 'BEAD Eligible BSL Percent<br /><table><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLPercent_3_20Unserved0.png" /></td><td><20% Unserved</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLPercent_3_20401.png" /></td><td>20-40%</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLPercent_3_40602.png" /></td><td>40-60%</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLPercent_3_60803.png" /></td><td>60-80%</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLPercent_3_801004.png" /></td><td>80-100%</td></tr><tr><td style="text-align: center;"><img src="legend/BEADEligibleBSLPercent_3_NoBSLs5.png" /></td><td>No BSLs</td></tr></table>', layer: layer_BEADEligibleBSLPercent_3},
+            {label: "Google Streets", layer: layer_GoogleStreets_2},
+            {label: "Google Satellite", layer: layer_GoogleSatellite_1},
+            {label: "ESRI Light Gray", layer: layer_ESRILightGray_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"GEOID20": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_GEOID20 = document.createElement('div');
+            div_GEOID20.id = "div_GEOID20";
+            div_GEOID20.className= "filterselect";
+            document.getElementById("menu").appendChild(div_GEOID20);
+            sel_GEOID20 = document.createElement('select');
+            sel_GEOID20.multiple = true;
+            sel_GEOID20.size = 10;
+            sel_GEOID20.id = "sel_GEOID20";
+            var GEOID20_options_str = "<option value='' unselected></option>";
+            sel_GEOID20.onchange = function(){filterFunc()};
+            GEOID20_options_str  += '<option value="510479304003001">510479304003001</option>';
+            GEOID20_options_str  += '<option value="510479304003002">510479304003002</option>';
+            GEOID20_options_str  += '<option value="510479304003003">510479304003003</option>';
+            GEOID20_options_str  += '<option value="510479304003004">510479304003004</option>';
+            GEOID20_options_str  += '<option value="510479304003005">510479304003005</option>';
+            GEOID20_options_str  += '<option value="510479304003006">510479304003006</option>';
+            GEOID20_options_str  += '<option value="510479304003009">510479304003009</option>';
+            GEOID20_options_str  += '<option value="510479304003010">510479304003010</option>';
+            GEOID20_options_str  += '<option value="510479304003013">510479304003013</option>';
+            GEOID20_options_str  += '<option value="510479304003014">510479304003014</option>';
+            GEOID20_options_str  += '<option value="510479304003015">510479304003015</option>';
+            GEOID20_options_str  += '<option value="510479304003016">510479304003016</option>';
+            GEOID20_options_str  += '<option value="510479304003017">510479304003017</option>';
+            GEOID20_options_str  += '<option value="510479304003018">510479304003018</option>';
+            GEOID20_options_str  += '<option value="510479304003019">510479304003019</option>';
+            GEOID20_options_str  += '<option value="510479304003020">510479304003020</option>';
+            GEOID20_options_str  += '<option value="510479304003021">510479304003021</option>';
+            GEOID20_options_str  += '<option value="510479304003022">510479304003022</option>';
+            GEOID20_options_str  += '<option value="510479304003023">510479304003023</option>';
+            GEOID20_options_str  += '<option value="510479304003024">510479304003024</option>';
+            GEOID20_options_str  += '<option value="510479304003025">510479304003025</option>';
+            GEOID20_options_str  += '<option value="510479304003026">510479304003026</option>';
+            GEOID20_options_str  += '<option value="510479304003027">510479304003027</option>';
+            GEOID20_options_str  += '<option value="510479304003028">510479304003028</option>';
+            GEOID20_options_str  += '<option value="510479304003029">510479304003029</option>';
+            GEOID20_options_str  += '<option value="510479304003030">510479304003030</option>';
+            GEOID20_options_str  += '<option value="510479304003031">510479304003031</option>';
+            GEOID20_options_str  += '<option value="510479304003032">510479304003032</option>';
+            GEOID20_options_str  += '<option value="510479304003034">510479304003034</option>';
+            GEOID20_options_str  += '<option value="510479304003035">510479304003035</option>';
+            GEOID20_options_str  += '<option value="510479304003037">510479304003037</option>';
+            GEOID20_options_str  += '<option value="510479304003038">510479304003038</option>';
+            GEOID20_options_str  += '<option value="510479304003039">510479304003039</option>';
+            GEOID20_options_str  += '<option value="510479304003040">510479304003040</option>';
+            GEOID20_options_str  += '<option value="510479304003041">510479304003041</option>';
+            GEOID20_options_str  += '<option value="510479304003042">510479304003042</option>';
+            GEOID20_options_str  += '<option value="510479304003043">510479304003043</option>';
+            GEOID20_options_str  += '<option value="510479304003045">510479304003045</option>';
+            GEOID20_options_str  += '<option value="510479304003046">510479304003046</option>';
+            GEOID20_options_str  += '<option value="510479304003049">510479304003049</option>';
+            GEOID20_options_str  += '<option value="510479304003051">510479304003051</option>';
+            GEOID20_options_str  += '<option value="510479304003052">510479304003052</option>';
+            GEOID20_options_str  += '<option value="510479304003053">510479304003053</option>';
+            GEOID20_options_str  += '<option value="510479304003056">510479304003056</option>';
+            GEOID20_options_str  += '<option value="510479304003057">510479304003057</option>';
+            GEOID20_options_str  += '<option value="510479304003058">510479304003058</option>';
+            GEOID20_options_str  += '<option value="510479304003059">510479304003059</option>';
+            GEOID20_options_str  += '<option value="510479304003060">510479304003060</option>';
+            GEOID20_options_str  += '<option value="510479304003061">510479304003061</option>';
+            GEOID20_options_str  += '<option value="510479304003062">510479304003062</option>';
+            GEOID20_options_str  += '<option value="510479304003063">510479304003063</option>';
+            GEOID20_options_str  += '<option value="510479304003064">510479304003064</option>';
+            GEOID20_options_str  += '<option value="510479304003065">510479304003065</option>';
+            GEOID20_options_str  += '<option value="510479304003066">510479304003066</option>';
+            GEOID20_options_str  += '<option value="510479304003067">510479304003067</option>';
+            GEOID20_options_str  += '<option value="510479304003068">510479304003068</option>';
+            GEOID20_options_str  += '<option value="510479304003069">510479304003069</option>';
+            GEOID20_options_str  += '<option value="510479304003070">510479304003070</option>';
+            GEOID20_options_str  += '<option value="510479304003073">510479304003073</option>';
+            GEOID20_options_str  += '<option value="510479304003074">510479304003074</option>';
+            GEOID20_options_str  += '<option value="510479304003075">510479304003075</option>';
+            GEOID20_options_str  += '<option value="510479304003077">510479304003077</option>';
+            GEOID20_options_str  += '<option value="510479304003082">510479304003082</option>';
+            GEOID20_options_str  += '<option value="510479304003083">510479304003083</option>';
+            GEOID20_options_str  += '<option value="510479304003084">510479304003084</option>';
+            GEOID20_options_str  += '<option value="510479304003085">510479304003085</option>';
+            GEOID20_options_str  += '<option value="510479304003086">510479304003086</option>';
+            GEOID20_options_str  += '<option value="510479304003087">510479304003087</option>';
+            GEOID20_options_str  += '<option value="510619302052005">510619302052005</option>';
+            GEOID20_options_str  += '<option value="510619302052007">510619302052007</option>';
+            GEOID20_options_str  += '<option value="510619302052008">510619302052008</option>';
+            GEOID20_options_str  += '<option value="510619302052014">510619302052014</option>';
+            GEOID20_options_str  += '<option value="510619302052016">510619302052016</option>';
+            GEOID20_options_str  += '<option value="510619302052017">510619302052017</option>';
+            GEOID20_options_str  += '<option value="510619307032000">510619307032000</option>';
+            GEOID20_options_str  += '<option value="510619307032001">510619307032001</option>';
+            GEOID20_options_str  += '<option value="510619307032002">510619307032002</option>';
+            GEOID20_options_str  += '<option value="510619307032003">510619307032003</option>';
+            GEOID20_options_str  += '<option value="510619307032004">510619307032004</option>';
+            GEOID20_options_str  += '<option value="510619307032005">510619307032005</option>';
+            GEOID20_options_str  += '<option value="510619307032006">510619307032006</option>';
+            GEOID20_options_str  += '<option value="510619307032010">510619307032010</option>';
+            GEOID20_options_str  += '<option value="510619307032013">510619307032013</option>';
+            GEOID20_options_str  += '<option value="510619307032014">510619307032014</option>';
+            GEOID20_options_str  += '<option value="510619307032015">510619307032015</option>';
+            GEOID20_options_str  += '<option value="510619307032016">510619307032016</option>';
+            GEOID20_options_str  += '<option value="510619307032017">510619307032017</option>';
+            GEOID20_options_str  += '<option value="510619307032018">510619307032018</option>';
+            GEOID20_options_str  += '<option value="510619307032019">510619307032019</option>';
+            GEOID20_options_str  += '<option value="510619307032022">510619307032022</option>';
+            GEOID20_options_str  += '<option value="510619307032023">510619307032023</option>';
+            GEOID20_options_str  += '<option value="510619307032024">510619307032024</option>';
+            GEOID20_options_str  += '<option value="510619307032025">510619307032025</option>';
+            GEOID20_options_str  += '<option value="510619307032026">510619307032026</option>';
+            GEOID20_options_str  += '<option value="510619307032027">510619307032027</option>';
+            GEOID20_options_str  += '<option value="510619307032029">510619307032029</option>';
+            GEOID20_options_str  += '<option value="510619307032030">510619307032030</option>';
+            GEOID20_options_str  += '<option value="510619307051000">510619307051000</option>';
+            GEOID20_options_str  += '<option value="510619307051001">510619307051001</option>';
+            GEOID20_options_str  += '<option value="510619307051002">510619307051002</option>';
+            GEOID20_options_str  += '<option value="510619307051005">510619307051005</option>';
+            GEOID20_options_str  += '<option value="510619307051006">510619307051006</option>';
+            GEOID20_options_str  += '<option value="510619307051008">510619307051008</option>';
+            GEOID20_options_str  += '<option value="510619307051009">510619307051009</option>';
+            GEOID20_options_str  += '<option value="510619307051010">510619307051010</option>';
+            GEOID20_options_str  += '<option value="510619307051015">510619307051015</option>';
+            GEOID20_options_str  += '<option value="510619307051032">510619307051032</option>';
+            GEOID20_options_str  += '<option value="510619307051033">510619307051033</option>';
+            GEOID20_options_str  += '<option value="510619307051034">510619307051034</option>';
+            GEOID20_options_str  += '<option value="510619307052000">510619307052000</option>';
+            GEOID20_options_str  += '<option value="510619307052001">510619307052001</option>';
+            GEOID20_options_str  += '<option value="510619307052002">510619307052002</option>';
+            GEOID20_options_str  += '<option value="510619307052003">510619307052003</option>';
+            GEOID20_options_str  += '<option value="510619307052005">510619307052005</option>';
+            GEOID20_options_str  += '<option value="510619307052006">510619307052006</option>';
+            GEOID20_options_str  += '<option value="510619307052007">510619307052007</option>';
+            GEOID20_options_str  += '<option value="510619307052009">510619307052009</option>';
+            GEOID20_options_str  += '<option value="510619307052010">510619307052010</option>';
+            GEOID20_options_str  += '<option value="510619307052011">510619307052011</option>';
+            GEOID20_options_str  += '<option value="510619307052012">510619307052012</option>';
+            GEOID20_options_str  += '<option value="510619307052013">510619307052013</option>';
+            GEOID20_options_str  += '<option value="510619307052014">510619307052014</option>';
+            GEOID20_options_str  += '<option value="510619307052015">510619307052015</option>';
+            GEOID20_options_str  += '<option value="510619307052016">510619307052016</option>';
+            GEOID20_options_str  += '<option value="510619307052017">510619307052017</option>';
+            GEOID20_options_str  += '<option value="510619307052018">510619307052018</option>';
+            GEOID20_options_str  += '<option value="510619307052019">510619307052019</option>';
+            GEOID20_options_str  += '<option value="510619307052020">510619307052020</option>';
+            GEOID20_options_str  += '<option value="510619307052021">510619307052021</option>';
+            GEOID20_options_str  += '<option value="510619307052022">510619307052022</option>';
+            GEOID20_options_str  += '<option value="510619307052023">510619307052023</option>';
+            GEOID20_options_str  += '<option value="510619307052024">510619307052024</option>';
+            GEOID20_options_str  += '<option value="510619307052025">510619307052025</option>';
+            GEOID20_options_str  += '<option value="510619307052026">510619307052026</option>';
+            GEOID20_options_str  += '<option value="510619307052027">510619307052027</option>';
+            GEOID20_options_str  += '<option value="510619307052028">510619307052028</option>';
+            GEOID20_options_str  += '<option value="510619307052029">510619307052029</option>';
+            GEOID20_options_str  += '<option value="510619307052032">510619307052032</option>';
+            GEOID20_options_str  += '<option value="510619307052033">510619307052033</option>';
+            GEOID20_options_str  += '<option value="510619307071003">510619307071003</option>';
+            GEOID20_options_str  += '<option value="510619307071006">510619307071006</option>';
+            GEOID20_options_str  += '<option value="510619307072001">510619307072001</option>';
+            GEOID20_options_str  += '<option value="510619307072006">510619307072006</option>';
+            GEOID20_options_str  += '<option value="510619307072008">510619307072008</option>';
+            GEOID20_options_str  += '<option value="510619307072009">510619307072009</option>';
+            GEOID20_options_str  += '<option value="510619307072011">510619307072011</option>';
+            GEOID20_options_str  += '<option value="510619307072012">510619307072012</option>';
+            GEOID20_options_str  += '<option value="510619307072018">510619307072018</option>';
+            GEOID20_options_str  += '<option value="510619307072021">510619307072021</option>';
+            GEOID20_options_str  += '<option value="510619307072022">510619307072022</option>';
+            GEOID20_options_str  += '<option value="510619307072025">510619307072025</option>';
+            GEOID20_options_str  += '<option value="510619307072026">510619307072026</option>';
+            GEOID20_options_str  += '<option value="510619307072027">510619307072027</option>';
+            GEOID20_options_str  += '<option value="510619307072028">510619307072028</option>';
+            GEOID20_options_str  += '<option value="510619307072030">510619307072030</option>';
+            GEOID20_options_str  += '<option value="510619307072031">510619307072031</option>';
+            GEOID20_options_str  += '<option value="511139301011038">511139301011038</option>';
+            GEOID20_options_str  += '<option value="511139301011040">511139301011040</option>';
+            GEOID20_options_str  += '<option value="511139301011041">511139301011041</option>';
+            GEOID20_options_str  += '<option value="511139301011043">511139301011043</option>';
+            GEOID20_options_str  += '<option value="511139301011044">511139301011044</option>';
+            GEOID20_options_str  += '<option value="511139301011047">511139301011047</option>';
+            GEOID20_options_str  += '<option value="511139301011048">511139301011048</option>';
+            GEOID20_options_str  += '<option value="511139301011049">511139301011049</option>';
+            GEOID20_options_str  += '<option value="511139301011050">511139301011050</option>';
+            GEOID20_options_str  += '<option value="511139301011052">511139301011052</option>';
+            GEOID20_options_str  += '<option value="511139301011056">511139301011056</option>';
+            GEOID20_options_str  += '<option value="511139301011057">511139301011057</option>';
+            GEOID20_options_str  += '<option value="511139301011061">511139301011061</option>';
+            GEOID20_options_str  += '<option value="511139301011062">511139301011062</option>';
+            GEOID20_options_str  += '<option value="511139301021000">511139301021000</option>';
+            GEOID20_options_str  += '<option value="511139301021001">511139301021001</option>';
+            GEOID20_options_str  += '<option value="511139301021002">511139301021002</option>';
+            GEOID20_options_str  += '<option value="511139301021003">511139301021003</option>';
+            GEOID20_options_str  += '<option value="511139301021004">511139301021004</option>';
+            GEOID20_options_str  += '<option value="511139301021005">511139301021005</option>';
+            GEOID20_options_str  += '<option value="511139301021007">511139301021007</option>';
+            GEOID20_options_str  += '<option value="511139301021008">511139301021008</option>';
+            GEOID20_options_str  += '<option value="511139301021009">511139301021009</option>';
+            GEOID20_options_str  += '<option value="511139301021010">511139301021010</option>';
+            GEOID20_options_str  += '<option value="511139301021012">511139301021012</option>';
+            GEOID20_options_str  += '<option value="511139301021013">511139301021013</option>';
+            GEOID20_options_str  += '<option value="511139301021017">511139301021017</option>';
+            GEOID20_options_str  += '<option value="511139301021018">511139301021018</option>';
+            GEOID20_options_str  += '<option value="511139301021019">511139301021019</option>';
+            GEOID20_options_str  += '<option value="511139301021020">511139301021020</option>';
+            GEOID20_options_str  += '<option value="511139301021021">511139301021021</option>';
+            GEOID20_options_str  += '<option value="511139301021022">511139301021022</option>';
+            GEOID20_options_str  += '<option value="511139301021023">511139301021023</option>';
+            GEOID20_options_str  += '<option value="511139301021024">511139301021024</option>';
+            GEOID20_options_str  += '<option value="511139301021025">511139301021025</option>';
+            GEOID20_options_str  += '<option value="511139301021028">511139301021028</option>';
+            GEOID20_options_str  += '<option value="511139301021032">511139301021032</option>';
+            GEOID20_options_str  += '<option value="511139301021035">511139301021035</option>';
+            GEOID20_options_str  += '<option value="511139301021037">511139301021037</option>';
+            GEOID20_options_str  += '<option value="511139301021040">511139301021040</option>';
+            GEOID20_options_str  += '<option value="511139301021045">511139301021045</option>';
+            GEOID20_options_str  += '<option value="511371101081014">511371101081014</option>';
+            GEOID20_options_str  += '<option value="511371101081019">511371101081019</option>';
+            GEOID20_options_str  += '<option value="511371101081020">511371101081020</option>';
+            GEOID20_options_str  += '<option value="511371101081030">511371101081030</option>';
+            GEOID20_options_str  += '<option value="511371101081032">511371101081032</option>';
+            GEOID20_options_str  += '<option value="511371101081037">511371101081037</option>';
+            GEOID20_options_str  += '<option value="511371101081039">511371101081039</option>';
+            GEOID20_options_str  += '<option value="511371101081040">511371101081040</option>';
+            GEOID20_options_str  += '<option value="511371101081041">511371101081041</option>';
+            GEOID20_options_str  += '<option value="511371101081043">511371101081043</option>';
+            GEOID20_options_str  += '<option value="511371101081044">511371101081044</option>';
+            GEOID20_options_str  += '<option value="511371101081045">511371101081045</option>';
+            GEOID20_options_str  += '<option value="511371101081046">511371101081046</option>';
+            GEOID20_options_str  += '<option value="511371101081047">511371101081047</option>';
+            GEOID20_options_str  += '<option value="511371101081048">511371101081048</option>';
+            GEOID20_options_str  += '<option value="511371101081049">511371101081049</option>';
+            GEOID20_options_str  += '<option value="511371101081050">511371101081050</option>';
+            GEOID20_options_str  += '<option value="511371101081051">511371101081051</option>';
+            GEOID20_options_str  += '<option value="511371101081052">511371101081052</option>';
+            GEOID20_options_str  += '<option value="511371101081053">511371101081053</option>';
+            GEOID20_options_str  += '<option value="511371101081054">511371101081054</option>';
+            GEOID20_options_str  += '<option value="511371101081055">511371101081055</option>';
+            GEOID20_options_str  += '<option value="511371101081056">511371101081056</option>';
+            GEOID20_options_str  += '<option value="511371101081057">511371101081057</option>';
+            GEOID20_options_str  += '<option value="511371101081058">511371101081058</option>';
+            GEOID20_options_str  += '<option value="511371101081059">511371101081059</option>';
+            GEOID20_options_str  += '<option value="511371102001000">511371102001000</option>';
+            GEOID20_options_str  += '<option value="511371102001008">511371102001008</option>';
+            GEOID20_options_str  += '<option value="511371102001009">511371102001009</option>';
+            GEOID20_options_str  += '<option value="511371102001010">511371102001010</option>';
+            GEOID20_options_str  += '<option value="511371102001011">511371102001011</option>';
+            GEOID20_options_str  += '<option value="511371102001013">511371102001013</option>';
+            GEOID20_options_str  += '<option value="511371102001014">511371102001014</option>';
+            GEOID20_options_str  += '<option value="511371102001015">511371102001015</option>';
+            GEOID20_options_str  += '<option value="511371102001016">511371102001016</option>';
+            GEOID20_options_str  += '<option value="511371102001018">511371102001018</option>';
+            GEOID20_options_str  += '<option value="511371102001022">511371102001022</option>';
+            GEOID20_options_str  += '<option value="511371102001027">511371102001027</option>';
+            GEOID20_options_str  += '<option value="511371102001029">511371102001029</option>';
+            GEOID20_options_str  += '<option value="511371102001054">511371102001054</option>';
+            GEOID20_options_str  += '<option value="511371102001066">511371102001066</option>';
+            GEOID20_options_str  += '<option value="511371102001081">511371102001081</option>';
+            GEOID20_options_str  += '<option value="511371102001082">511371102001082</option>';
+            GEOID20_options_str  += '<option value="511371102001084">511371102001084</option>';
+            GEOID20_options_str  += '<option value="511371102001094">511371102001094</option>';
+            GEOID20_options_str  += '<option value="511371102001097">511371102001097</option>';
+            sel_GEOID20.innerHTML = GEOID20_options_str;
+            div_GEOID20.appendChild(sel_GEOID20);
+            var lab_GEOID20 = document.createElement('div');
+            lab_GEOID20.innerHTML = 'GEOID20';
+            lab_GEOID20.className = 'filterlabel';
+            div_GEOID20.appendChild(lab_GEOID20);
+            var reset_GEOID20 = document.createElement('div');
+            reset_GEOID20.innerHTML = 'clear filter';
+            reset_GEOID20.className = 'filterlabel';
+            reset_GEOID20.onclick = function() {
+                var options = document.getElementById("sel_GEOID20").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_GEOID20.appendChild(reset_GEOID20);
+        </script>
+    </body>
+</html>
